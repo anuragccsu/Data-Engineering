@@ -1,0 +1,37 @@
+{
+	"name": "ds_source_SQL_Generic_IncrementalLoad",
+	"properties": {
+		"linkedServiceName": {
+			"referenceName": "LocalSQLServer",
+			"type": "LinkedServiceReference"
+		},
+		"parameters": {
+			"SchemaName": {
+				"type": "string"
+			},
+			"TableName": {
+				"type": "string"
+			},
+			"LastModified": {
+				"type": "string"
+			}
+		},
+		"folder": {
+			"name": "DS_LocalSQLServer/Assignment-3 Incremental Load"
+		},
+		"annotations": [],
+		"type": "SqlServerTable",
+		"schema": [],
+		"typeProperties": {
+			"schema": {
+				"value": "@dataset().SchemaName",
+				"type": "Expression"
+			},
+			"table": {
+				"value": "@dataset().TableName",
+				"type": "Expression"
+			}
+		}
+	},
+	"type": "Microsoft.DataFactory/factories/datasets"
+}

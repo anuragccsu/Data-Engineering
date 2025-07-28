@@ -1,0 +1,27 @@
+{
+	"name": "ds_sink_OpenFDA_adls",
+	"properties": {
+		"linkedServiceName": {
+			"referenceName": "ls_adls",
+			"type": "LinkedServiceReference"
+		},
+		"folder": {
+			"name": "openFDA"
+		},
+		"annotations": [],
+		"type": "Json",
+		"typeProperties": {
+			"location": {
+				"type": "AzureBlobFSLocation",
+				"fileName": {
+					"value": "openfda_2025_01_batch_@{item()}.json",
+					"type": "Expression"
+				},
+				"folderPath": "openfda/adverse_events/2025-01/",
+				"fileSystem": "raw"
+			}
+		},
+		"schema": {}
+	},
+	"type": "Microsoft.DataFactory/factories/datasets"
+}

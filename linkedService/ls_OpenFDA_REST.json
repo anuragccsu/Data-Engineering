@@ -1,0 +1,14 @@
+{
+	"name": "ls_OpenFDA_REST",
+	"type": "Microsoft.DataFactory/factories/linkedservices",
+	"properties": {
+		"description": "Linked Service for openFDA REST API",
+		"annotations": [],
+		"type": "RestService",
+		"typeProperties": {
+			"url": "https://api.fda.gov/",
+			"enableServerCertificateValidation": true,
+			"authenticationType": "Anonymous"
+		}
+	}
+}

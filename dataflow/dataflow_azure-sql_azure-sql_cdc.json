@@ -1,0 +1,66 @@
+{
+	"name": "dataflow_azure-sql_azure-sql_cdc",
+	"properties": {
+		"folder": {
+			"name": "CDC"
+		},
+		"type": "MappingDataFlow",
+		"typeProperties": {
+			"sources": [
+				{
+					"dataset": {
+						"referenceName": "ds_source_azuresql_cdc",
+						"type": "DatasetReference"
+					},
+					"name": "AzureSQLDB"
+				}
+			],
+			"sinks": [
+				{
+					"dataset": {
+						"referenceName": "ds_sink_azure_sql_to_azure_sql_cdc",
+						"type": "DatasetReference"
+					},
+					"name": "AzureSQLCDCSink"
+				}
+			],
+			"transformations": [],
+			"scriptLines": [
+				"source(output(",
+				"          Id as integer,",
+				"          Name as string,",
+				"          Department as string,",
+				"          PhoneNumber as string,",
+				"          ModifiedDate as timestamp",
+				"     ),",
+				"     allowSchemaDrift: true,",
+				"     validateSchema: false,",
+				"     enableNativeCdc: true,",
+				"     netChanges: true,",
+				"     skipInitialLoad: false,",
+				"     isolationLevel: 'READ_UNCOMMITTED',",
+				"     format: 'table') ~> AzureSQLDB",
+				"AzureSQLDB sink(allowSchemaDrift: true,",
+				"     validateSchema: false,",
+				"     input(",
+				"          Id as integer,",
+				"          Name as string,",
+				"          Department as string,",
+				"          PhoneNumber as string,",
+				"          ModifiedDate as timestamp",
+				"     ),",
+				"     deletable:true,",
+				"     insertable:true,",
+				"     updateable:true,",
+				"     upsertable:true,",
+				"     keys:['Id'],",
+				"     format: 'table',",
+				"     skipDuplicateMapInputs: true,",
+				"     skipDuplicateMapOutputs: true,",
+				"     errorHandlingOption: 'stopOnFirstError',",
+				"     preCommands: [],",
+				"     postCommands: []) ~> AzureSQLCDCSink"
+			]
+		}
+	}
+}

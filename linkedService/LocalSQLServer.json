@@ -1,0 +1,22 @@
+{
+	"name": "LocalSQLServer",
+	"type": "Microsoft.DataFactory/factories/linkedservices",
+	"properties": {
+		"description": "To connect to my local SQL Server",
+		"annotations": [],
+		"type": "SqlServer",
+		"typeProperties": {
+			"server": "OVIYA\\AVMSSQL_1",
+			"database": "AdventureWorks2019",
+			"encrypt": "mandatory",
+			"trustServerCertificate": true,
+			"authenticationType": "SQL",
+			"userName": "adf_user",
+			"encryptedCredential": "eyJDcmVkZW50aWFsSWQiOiIzNzgzZWFlZi1lOGFiLTRkYTUtYWQ4NC1mMmEyY2ZkZjY5OTMiLCJWZXJzaW9uIjoiMi4wIiwiQ2xhc3NUeXBlIjoiTWljcm9zb2Z0LkRhdGFQcm94eS5Db3JlLkludGVyU2VydmljZURhdGFDb250cmFjdC5DcmVkZW50aWFsU1UwNkNZMTQifQ=="
+		},
+		"connectVia": {
+			"referenceName": "SHIR-LocalSQL-integrationRuntime",
+			"type": "IntegrationRuntimeReference"
+		}
+	}
+}

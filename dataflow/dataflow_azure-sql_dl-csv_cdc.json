@@ -1,0 +1,62 @@
+{
+	"name": "dataflow_azure-sql_dl-csv_cdc",
+	"properties": {
+		"folder": {
+			"name": "CDC"
+		},
+		"type": "MappingDataFlow",
+		"typeProperties": {
+			"sources": [
+				{
+					"dataset": {
+						"referenceName": "ds_source_azuresql_cdc",
+						"type": "DatasetReference"
+					},
+					"name": "AzureSQLDB"
+				}
+			],
+			"sinks": [
+				{
+					"dataset": {
+						"referenceName": "ds_sink_azure_sql_cdc",
+						"type": "DatasetReference"
+					},
+					"name": "AzureSQLCDCSink"
+				}
+			],
+			"transformations": [
+				{
+					"name": "AddOperationType",
+					"description": "Adding operation_type from CT table."
+				}
+			],
+			"scriptLines": [
+				"source(output(",
+				"          Id as integer,",
+				"          Name as string,",
+				"          Department as string,",
+				"          PhoneNumber as string,",
+				"          ModifiedDate as timestamp",
+				"     ),",
+				"     allowSchemaDrift: true,",
+				"     validateSchema: false,",
+				"     enableNativeCdc: true,",
+				"     netChanges: true,",
+				"     skipInitialLoad: false,",
+				"     isolationLevel: 'READ_UNCOMMITTED',",
+				"     format: 'table') ~> AzureSQLDB",
+				"AzureSQLDB derive(operation_type = iif(toString(`__$operation`) == '1', 'DELETE',\r",
+				"iif(toString(`__$operation`) == '2', 'INSERT',\r",
+				"iif(toString(`__$operation`) == '3', 'UPDATE_BEFORE',\r",
+				"iif(toString(`__$operation`) == '4', 'UPDATE_AFTER', 'UNKNOWN'))))) ~> AddOperationType",
+				"AddOperationType sink(allowSchemaDrift: true,",
+				"     validateSchema: false,",
+				"     umask: 0022,",
+				"     preCommands: [],",
+				"     postCommands: [],",
+				"     skipDuplicateMapInputs: true,",
+				"     skipDuplicateMapOutputs: true) ~> AzureSQLCDCSink"
+			]
+		}
+	}
+}

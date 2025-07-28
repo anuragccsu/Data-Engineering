@@ -1,0 +1,7 @@
+{
+	"name": "SHIR-LocalSQL-integrationRuntime",
+	"properties": {
+		"type": "SelfHosted",
+		"description": "To access my laptops local MS SQL server."
+	}
+}

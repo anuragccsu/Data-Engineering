@@ -1,0 +1,56 @@
+{
+	"name": "pipeline_openfda_debug",
+	"properties": {
+		"activities": [
+			{
+				"name": "ForEach",
+				"type": "ForEach",
+				"dependsOn": [],
+				"userProperties": [],
+				"typeProperties": {
+					"items": {
+						"value": "@range(0, 5)",
+						"type": "Expression"
+					},
+					"isSequential": false,
+					"activities": [
+						{
+							"name": "Set variable Debug",
+							"type": "SetVariable",
+							"dependsOn": [],
+							"policy": {
+								"secureOutput": false,
+								"secureInput": false
+							},
+							"userProperties": [],
+							"typeProperties": {
+								"variableName": "pl_var_test_relative_url",
+								"value": {
+									"value": "@concat('drug/event.json?search=receivedate:[20250101+TO+20250131]&limit=100&skip=', string(item()))",
+									"type": "Expression"
+								}
+							}
+						}
+					]
+				}
+			}
+		],
+		"variables": {
+			"var_record_count": {
+				"type": "Integer"
+			},
+			"var_page_count": {
+				"type": "Integer"
+			},
+			"pl_var_test_relative_url": {
+				"type": "String"
+			}
+		},
+		"folder": {
+			"name": "openFDA"
+		},
+		"annotations": [],
+		"lastPublishTime": "2025-07-22T09:49:45Z"
+	},
+	"type": "Microsoft.DataFactory/factories/pipelines"
+}

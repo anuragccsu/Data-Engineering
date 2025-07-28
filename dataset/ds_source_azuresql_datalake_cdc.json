@@ -1,0 +1,24 @@
+{
+	"name": "ds_source_azuresql_datalake_cdc",
+	"properties": {
+		"description": "This is from MS Learn CDC blog. dbo.customer table.",
+		"linkedServiceName": {
+			"referenceName": "ls_azure_sql_db",
+			"type": "LinkedServiceReference",
+			"parameters": {
+				"DatabaesName": "azure_sql_db"
+			}
+		},
+		"folder": {
+			"name": "AzureSQL_CDC"
+		},
+		"annotations": [],
+		"type": "AzureSqlTable",
+		"schema": [],
+		"typeProperties": {
+			"schema": "dbo",
+			"table": "data_source_table"
+		}
+	},
+	"type": "Microsoft.DataFactory/factories/datasets"
+}

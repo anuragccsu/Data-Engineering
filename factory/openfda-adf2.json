@@ -1,0 +1,9 @@
+{
+	"name": "openfda-adf2",
+	"location": "centralindia",
+	"identity": {
+		"type": "SystemAssigned",
+		"principalId": "b00104d0-b39e-47c4-ae03-4fb0d8e35a78",
+		"tenantId": "521161d9-b423-4c87-9a88-8f29c9130a74"
+	}
+}

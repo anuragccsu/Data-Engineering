@@ -1,0 +1,34 @@
+{
+	"name": "ds_source_WatermarkDataset",
+	"properties": {
+		"linkedServiceName": {
+			"referenceName": "ls_azure_sql_db",
+			"type": "LinkedServiceReference",
+			"parameters": {
+				"DatabaesName": "azure_sql_db"
+			}
+		},
+		"folder": {
+			"name": "AzureSQL_CDC/CDC-3"
+		},
+		"annotations": [],
+		"type": "AzureSqlTable",
+		"schema": [
+			{
+				"name": "TableName",
+				"type": "varchar"
+			},
+			{
+				"name": "WatermarkValue",
+				"type": "datetime",
+				"precision": 23,
+				"scale": 3
+			}
+		],
+		"typeProperties": {
+			"schema": "dbo",
+			"table": "watermarktable"
+		}
+	},
+	"type": "Microsoft.DataFactory/factories/datasets"
+}

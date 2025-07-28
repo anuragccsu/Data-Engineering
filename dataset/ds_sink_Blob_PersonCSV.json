@@ -1,0 +1,26 @@
+{
+	"name": "ds_sink_Blob_PersonCSV",
+	"properties": {
+		"linkedServiceName": {
+			"referenceName": "AzureBlobStorageForLocalSQLServer",
+			"type": "LinkedServiceReference"
+		},
+		"folder": {
+			"name": "DS_LocalSQLServer/Assignment-1"
+		},
+		"annotations": [],
+		"type": "DelimitedText",
+		"typeProperties": {
+			"location": {
+				"type": "AzureBlobStorageLocation",
+				"container": "adf-output"
+			},
+			"columnDelimiter": ",",
+			"escapeChar": "\\",
+			"firstRowAsHeader": true,
+			"quoteChar": "\""
+		},
+		"schema": []
+	},
+	"type": "Microsoft.DataFactory/factories/datasets"
+}

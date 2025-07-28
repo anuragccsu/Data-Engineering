@@ -1,0 +1,1564 @@
+{
+	"$schema": "http://schema.management.azure.com/schemas/2015-01-01/deploymentTemplate.json#",
+	"contentVersion": "1.0.0.0",
+	"parameters": {
+		"factoryName": {
+			"type": "string",
+			"metadata": "Data Factory name",
+			"defaultValue": "openfda-adf2"
+		},
+		"LocalSQLServer_password": {
+			"type": "secureString",
+			"metadata": "Secure string for 'password' of 'LocalSQLServer'"
+		},
+		"LocalSQLServer_properties_typeProperties_server": {
+			"type": "string",
+			"defaultValue": "OVIYA\\AVMSSQL_1"
+		},
+		"LocalSQLServer_properties_typeProperties_database": {
+			"type": "string",
+			"defaultValue": "AdventureWorks2019"
+		},
+		"LocalSQLServer_properties_typeProperties_userName": {
+			"type": "string",
+			"defaultValue": "adf_user"
+		},
+		"trigger_cdc_properties_pl_IncrementalCopyPipeline_MS-Learn_CDC_Generic_NW_parameters_triggerStartTime": {
+			"type": "string",
+			"defaultValue": "12:30:00.000"
+		},
+		"trigger_cdc_properties_pl_IncrementalCopyPipeline_MS-Learn_CDC_Generic_NW_parameters_triggerEndTime": {
+			"type": "string",
+			"defaultValue": "12:35:00.000"
+		}
+	},
+	"variables": {
+		"factoryId": "[concat('Microsoft.DataFactory/factories/', parameters('factoryName'))]"
+	},
+	"resources": [
+		{
+			"name": "[concat(parameters('factoryName'), '/ds_source_config_file')]",
+			"type": "Microsoft.DataFactory/factories/datasets",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"linkedServiceName": {
+					"referenceName": "AzureBlobStorageForLocalSQLServer",
+					"type": "LinkedServiceReference"
+				},
+				"folder": {
+					"name": "DS_LocalSQLServer/Assignment-2"
+				},
+				"annotations": [],
+				"type": "DelimitedText",
+				"typeProperties": {
+					"location": {
+						"type": "AzureBlobStorageLocation",
+						"fileName": "table_list.csv",
+						"folderPath": "config",
+						"container": "adf-input"
+					},
+					"columnDelimiter": ",",
+					"escapeChar": "\\",
+					"firstRowAsHeader": true,
+					"quoteChar": "\""
+				},
+				"schema": []
+			},
+			"dependsOn": []
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/ds_source_config_file_IncrementalLoad')]",
+			"type": "Microsoft.DataFactory/factories/datasets",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"linkedServiceName": {
+					"referenceName": "AzureBlobStorageForLocalSQLServer",
+					"type": "LinkedServiceReference"
+				},
+				"folder": {
+					"name": "DS_LocalSQLServer/Assignment-3 Incremental Load"
+				},
+				"annotations": [],
+				"type": "DelimitedText",
+				"typeProperties": {
+					"location": {
+						"type": "AzureBlobStorageLocation",
+						"fileName": "table_list.csv",
+						"folderPath": "config",
+						"container": "adf-input"
+					},
+					"columnDelimiter": ",",
+					"escapeChar": "\\",
+					"firstRowAsHeader": true,
+					"quoteChar": "\""
+				},
+				"schema": []
+			},
+			"dependsOn": []
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/LocalSQLServer')]",
+			"type": "Microsoft.DataFactory/factories/linkedServices",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"description": "To connect to my local SQL Server",
+				"annotations": [],
+				"type": "SqlServer",
+				"typeProperties": {
+					"server": "[parameters('LocalSQLServer_properties_typeProperties_server')]",
+					"database": "[parameters('LocalSQLServer_properties_typeProperties_database')]",
+					"encrypt": "mandatory",
+					"trustServerCertificate": true,
+					"authenticationType": "SQL",
+					"userName": "[parameters('LocalSQLServer_properties_typeProperties_userName')]",
+					"password": {
+						"type": "SecureString",
+						"value": "[parameters('LocalSQLServer_password')]"
+					}
+				},
+				"connectVia": {
+					"referenceName": "SHIR-LocalSQL-integrationRuntime",
+					"type": "IntegrationRuntimeReference"
+				}
+			},
+			"dependsOn": []
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/pipeline_openfda')]",
+			"type": "Microsoft.DataFactory/factories/pipelines",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"activities": [
+					{
+						"name": "Web1",
+						"type": "WebActivity",
+						"dependsOn": [],
+						"policy": {
+							"timeout": "0.12:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"method": "GET",
+							"headers": {},
+							"url": "https://api.fda.gov/drug/event.json?search=receivedate:[20250101+TO+20250131]"
+						}
+					},
+					{
+						"name": "Record Count",
+						"type": "SetVariable",
+						"dependsOn": [
+							{
+								"activity": "Web1",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"policy": {
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"variableName": "var_record_count",
+							"value": {
+								"value": "@activity('Web1').output.meta.results.total",
+								"type": "Expression"
+							}
+						}
+					},
+					{
+						"name": "Skip Count",
+						"type": "SetVariable",
+						"dependsOn": [
+							{
+								"activity": "Record Count",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"policy": {
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"variableName": "var_skip_count",
+							"value": {
+								"value": "@if(equals(mod(variables('var_record_count'), 1000), 0),\n    div(variables('var_record_count'), 1000),\n    add(div(variables('var_record_count'), 1000), 1))\n",
+								"type": "Expression"
+							}
+						}
+					},
+					{
+						"name": "ForEach",
+						"type": "ForEach",
+						"dependsOn": [
+							{
+								"activity": "Skip Count",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"userProperties": [],
+						"typeProperties": {
+							"items": {
+								"value": "@range(0, 25)\n",
+								"type": "Expression"
+							},
+							"isSequential": false,
+							"activities": [
+								{
+									"name": "Copy data For Each",
+									"type": "Copy",
+									"dependsOn": [],
+									"policy": {
+										"timeout": "0.12:00:00",
+										"retry": 0,
+										"retryIntervalInSeconds": 30,
+										"secureOutput": false,
+										"secureInput": false
+									},
+									"userProperties": [],
+									"typeProperties": {
+										"source": {
+											"type": "RestSource",
+											"httpRequestTimeout": "00:01:40",
+											"requestInterval": "00.00:00:00.010",
+											"requestMethod": "GET"
+										},
+										"sink": {
+											"type": "JsonSink",
+											"storeSettings": {
+												"type": "AzureBlobFSWriteSettings"
+											},
+											"formatSettings": {
+												"type": "JsonWriteSettings"
+											}
+										},
+										"enableStaging": false
+									},
+									"inputs": [
+										{
+											"referenceName": "ds_source_OpenFDA_JSON",
+											"type": "DatasetReference",
+											"parameters": {
+												"relativeUrl": {
+													"value": "@concat('drug/event.json?search=receivedate:[20250101+TO+20250131]&limit=1000&skip=', string(mul(item(), 1000)))\n",
+													"type": "Expression"
+												}
+											}
+										}
+									],
+									"outputs": [
+										{
+											"referenceName": "ds_sink_OpenFDA_adls",
+											"type": "DatasetReference",
+											"parameters": {}
+										}
+									]
+								}
+							]
+						}
+					}
+				],
+				"policy": {
+					"elapsedTimeMetric": {}
+				},
+				"variables": {
+					"var_record_count": {
+						"type": "Integer"
+					},
+					"var_skip_count": {
+						"type": "Integer"
+					}
+				},
+				"folder": {
+					"name": "openFDA"
+				},
+				"annotations": [],
+				"lastPublishTime": "2025-07-22T09:49:45Z"
+			},
+			"dependsOn": []
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/pl_IncrementalCopyPipeline_CDC-3')]",
+			"type": "Microsoft.DataFactory/factories/pipelines",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"description": "CDC-3 as per word document.",
+				"activities": [
+					{
+						"name": "LookupOldWaterMarkActivity",
+						"type": "Lookup",
+						"dependsOn": [],
+						"policy": {
+							"timeout": "0.12:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"source": {
+								"type": "AzureSqlSource",
+								"queryTimeout": "02:00:00",
+								"partitionOption": "None"
+							},
+							"dataset": {
+								"referenceName": "ds_source_WatermarkDataset",
+								"type": "DatasetReference",
+								"parameters": {}
+							}
+						}
+					},
+					{
+						"name": "LookupNewWaterMarkActivity",
+						"type": "Lookup",
+						"dependsOn": [],
+						"policy": {
+							"timeout": "0.12:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"source": {
+								"type": "AzureSqlSource",
+								"sqlReaderQuery": "select MAX(LastModifytime) as NewWatermarkvalue from data_source_table",
+								"queryTimeout": "02:00:00",
+								"partitionOption": "None"
+							},
+							"dataset": {
+								"referenceName": "ds_source_SourceDataset",
+								"type": "DatasetReference",
+								"parameters": {}
+							}
+						}
+					},
+					{
+						"name": "IncrementalCopyActivity",
+						"type": "Copy",
+						"dependsOn": [
+							{
+								"activity": "LookupOldWaterMarkActivity",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							},
+							{
+								"activity": "LookupNewWaterMarkActivity",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"policy": {
+							"timeout": "0.12:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"source": {
+								"type": "AzureSqlSource",
+								"sqlReaderQuery": {
+									"value": "select * from data_source_table where LastModifytime > '@{activity('LookupOldWaterMarkActivity').output.firstRow.WatermarkValue}' and LastModifytime <= '@{activity('LookupNewWaterMarkActivity').output.firstRow.NewWatermarkvalue}'",
+									"type": "Expression"
+								},
+								"queryTimeout": "02:00:00",
+								"partitionOption": "None"
+							},
+							"sink": {
+								"type": "DelimitedTextSink",
+								"storeSettings": {
+									"type": "AzureBlobFSWriteSettings"
+								},
+								"formatSettings": {
+									"type": "DelimitedTextWriteSettings",
+									"quoteAllText": true,
+									"fileExtension": ".txt"
+								}
+							},
+							"enableStaging": false,
+							"translator": {
+								"type": "TabularTranslator",
+								"typeConversion": true,
+								"typeConversionSettings": {
+									"allowDataTruncation": true,
+									"treatBooleanAsNumber": false
+								}
+							}
+						},
+						"inputs": [
+							{
+								"referenceName": "ds_source_SourceDataset",
+								"type": "DatasetReference",
+								"parameters": {}
+							}
+						],
+						"outputs": [
+							{
+								"referenceName": "ds_sink_SinkDataset",
+								"type": "DatasetReference",
+								"parameters": {}
+							}
+						]
+					},
+					{
+						"name": "StoredProceduretoWriteWatermarkActivity",
+						"type": "SqlServerStoredProcedure",
+						"dependsOn": [
+							{
+								"activity": "IncrementalCopyActivity",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"policy": {
+							"timeout": "0.12:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"storedProcedureName": "[[dbo].[usp_write_watermark]",
+							"storedProcedureParameters": {
+								"LastModifiedtime": {
+									"value": {
+										"value": "@{activity('LookupNewWaterMarkActivity').output.firstRow.NewWatermarkvalue}",
+										"type": "Expression"
+									},
+									"type": "Datetime"
+								},
+								"TableName": {
+									"value": {
+										"value": "@{activity('LookupOldWaterMarkActivity').output.firstRow.TableName}",
+										"type": "Expression"
+									},
+									"type": "String"
+								}
+							}
+						},
+						"linkedServiceName": {
+							"referenceName": "ls_azure_sql_db",
+							"type": "LinkedServiceReference",
+							"parameters": {
+								"DatabaesName": "azure_sql_db"
+							}
+						}
+					}
+				],
+				"policy": {
+					"elapsedTimeMetric": {}
+				},
+				"folder": {
+					"name": "CDC"
+				},
+				"annotations": [],
+				"lastPublishTime": "2025-07-28T06:08:04Z"
+			},
+			"dependsOn": []
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/pl_IncrementalCopyPipeline_MS-Learn_CDC_Generic_NW')]",
+			"type": "Microsoft.DataFactory/factories/pipelines",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"activities": [
+					{
+						"name": "GetChangeCount",
+						"type": "Lookup",
+						"dependsOn": [],
+						"policy": {
+							"timeout": "0.12:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"source": {
+								"type": "AzureSqlSource",
+								"sqlReaderQuery": {
+									"value": "@concat('DECLARE @begin_time datetime, @end_time datetime, @from_lsn binary(10), @to_lsn binary(10); \nSET @begin_time = ''',pipeline().parameters.triggerStartTime,''';\nSET @end_time = ''',pipeline().parameters.triggerEndTime,''';\nSET @from_lsn = sys.fn_cdc_map_time_to_lsn(''smallest greater than or equal'', @begin_time);\nSET @to_lsn = sys.fn_cdc_map_time_to_lsn(''largest less than'', @end_time);\nSELECT count(1) changecount FROM cdc.fn_cdc_get_net_changes_dbo_customers(@from_lsn, @to_lsn, ''all'')')",
+									"type": "Expression"
+								},
+								"queryTimeout": "02:00:00",
+								"partitionOption": "None"
+							},
+							"dataset": {
+								"referenceName": "ds_source_azuresql_datalake_cdc",
+								"type": "DatasetReference",
+								"parameters": {}
+							}
+						}
+					},
+					{
+						"name": "HasChangedRows",
+						"type": "IfCondition",
+						"dependsOn": [
+							{
+								"activity": "GetChangeCount",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"userProperties": [],
+						"typeProperties": {
+							"expression": {
+								"value": "@greater(int(activity('GetChangeCount').output.firstRow.changecount),0)",
+								"type": "Expression"
+							},
+							"ifTrueActivities": [
+								{
+									"name": "IncrementalCopyActivity",
+									"type": "Copy",
+									"dependsOn": [],
+									"policy": {
+										"timeout": "0.12:00:00",
+										"retry": 0,
+										"retryIntervalInSeconds": 30,
+										"secureOutput": false,
+										"secureInput": false
+									},
+									"userProperties": [],
+									"typeProperties": {
+										"source": {
+											"type": "AzureSqlSource",
+											"sqlReaderQuery": {
+												"value": "@concat('DECLARE @begin_time datetime, @end_time datetime, @from_lsn binary(10), @to_lsn binary(10); \nSET @begin_time = ''',pipeline().parameters.triggerStartTime,''';\nSET @end_time = ''',pipeline().parameters.triggerEndTime,''';\nSET @from_lsn = sys.fn_cdc_map_time_to_lsn(''smallest greater than or equal'', @begin_time);\nSET @to_lsn = sys.fn_cdc_map_time_to_lsn(''largest less than'', @end_time);\nSELECT * FROM cdc.fn_cdc_get_net_changes_dbo_customers(@from_lsn, @to_lsn, ''all'')')",
+												"type": "Expression"
+											},
+											"queryTimeout": "02:00:00",
+											"partitionOption": "None"
+										},
+										"sink": {
+											"type": "DelimitedTextSink",
+											"storeSettings": {
+												"type": "AzureBlobFSWriteSettings"
+											},
+											"formatSettings": {
+												"type": "DelimitedTextWriteSettings",
+												"quoteAllText": true,
+												"fileExtension": ".txt"
+											}
+										},
+										"enableStaging": false,
+										"translator": {
+											"type": "TabularTranslator",
+											"typeConversion": true,
+											"typeConversionSettings": {
+												"allowDataTruncation": true,
+												"treatBooleanAsNumber": false
+											}
+										}
+									},
+									"inputs": [
+										{
+											"referenceName": "ds_source_azuresql_datalake_cdc",
+											"type": "DatasetReference",
+											"parameters": {}
+										}
+									],
+									"outputs": [
+										{
+											"referenceName": "ds_sink_azure_sql_datalake_cdc",
+											"type": "DatasetReference",
+											"parameters": {}
+										}
+									]
+								}
+							]
+						}
+					}
+				],
+				"policy": {
+					"elapsedTimeMetric": {}
+				},
+				"parameters": {
+					"triggerStartTime": {
+						"type": "string",
+						"defaultValue": "2025-07-26 12:30:00.000"
+					},
+					"triggerEndTime": {
+						"type": "string",
+						"defaultValue": "2025-07-26 12:35:00.000"
+					}
+				},
+				"folder": {
+					"name": "CDC"
+				},
+				"annotations": [],
+				"lastPublishTime": "2025-07-27T06:25:14Z"
+			},
+			"dependsOn": []
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/pl_IncrementalCopyPipeline_MS-Learn_CDC_WORKING')]",
+			"type": "Microsoft.DataFactory/factories/pipelines",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"activities": [
+					{
+						"name": "GetChangeCount",
+						"type": "Lookup",
+						"dependsOn": [],
+						"policy": {
+							"timeout": "0.12:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"source": {
+								"type": "AzureSqlSource",
+								"sqlReaderQuery": {
+									"value": "DECLARE  @from_lsn binary(10), @to_lsn binary(10);  \nSET @from_lsn =sys.fn_cdc_get_min_lsn('dbo_customers');  \nSET @to_lsn = sys.fn_cdc_map_time_to_lsn('largest less than or equal',  GETDATE());\nSELECT count(1) changecount FROM cdc.fn_cdc_get_net_changes_dbo_customers(@from_lsn, @to_lsn, 'all')",
+									"type": "Expression"
+								},
+								"queryTimeout": "02:00:00",
+								"partitionOption": "None"
+							},
+							"dataset": {
+								"referenceName": "ds_source_azuresql_datalake_cdc",
+								"type": "DatasetReference",
+								"parameters": {}
+							}
+						}
+					},
+					{
+						"name": "HasChangedRows",
+						"type": "IfCondition",
+						"dependsOn": [
+							{
+								"activity": "GetChangeCount",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"userProperties": [],
+						"typeProperties": {
+							"expression": {
+								"value": "@greater(int(activity('GetChangeCount').output.firstRow.changecount),0)",
+								"type": "Expression"
+							},
+							"ifTrueActivities": [
+								{
+									"name": "IncrementalCopyActivity",
+									"type": "Copy",
+									"dependsOn": [],
+									"policy": {
+										"timeout": "0.12:00:00",
+										"retry": 0,
+										"retryIntervalInSeconds": 30,
+										"secureOutput": false,
+										"secureInput": false
+									},
+									"userProperties": [],
+									"typeProperties": {
+										"source": {
+											"type": "AzureSqlSource",
+											"sqlReaderQuery": "DECLARE @from_lsn binary(10), @to_lsn binary(10); \nSET @from_lsn =sys.fn_cdc_get_min_lsn('dbo_customers'); \nSET @to_lsn = sys.fn_cdc_map_time_to_lsn('largest less than or equal', GETDATE());\nSELECT * FROM cdc.fn_cdc_get_net_changes_dbo_customers(@from_lsn, @to_lsn, 'all')",
+											"queryTimeout": "02:00:00",
+											"partitionOption": "None"
+										},
+										"sink": {
+											"type": "DelimitedTextSink",
+											"storeSettings": {
+												"type": "AzureBlobFSWriteSettings"
+											},
+											"formatSettings": {
+												"type": "DelimitedTextWriteSettings",
+												"quoteAllText": true,
+												"fileExtension": ".txt"
+											}
+										},
+										"enableStaging": false,
+										"translator": {
+											"type": "TabularTranslator",
+											"typeConversion": true,
+											"typeConversionSettings": {
+												"allowDataTruncation": true,
+												"treatBooleanAsNumber": false
+											}
+										}
+									},
+									"inputs": [
+										{
+											"referenceName": "ds_source_azuresql_datalake_cdc",
+											"type": "DatasetReference",
+											"parameters": {}
+										}
+									],
+									"outputs": [
+										{
+											"referenceName": "ds_sink_azure_sql_datalake_cdc",
+											"type": "DatasetReference",
+											"parameters": {}
+										}
+									]
+								}
+							]
+						}
+					}
+				],
+				"policy": {
+					"elapsedTimeMetric": {}
+				},
+				"folder": {
+					"name": "CDC"
+				},
+				"annotations": [],
+				"lastPublishTime": "2025-07-27T06:25:14Z"
+			},
+			"dependsOn": []
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/ds_source_SQL_Generic')]",
+			"type": "Microsoft.DataFactory/factories/datasets",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"linkedServiceName": {
+					"referenceName": "LocalSQLServer",
+					"type": "LinkedServiceReference"
+				},
+				"parameters": {
+					"SchemaName": {
+						"type": "string"
+					},
+					"TableName": {
+						"type": "string"
+					}
+				},
+				"folder": {
+					"name": "DS_LocalSQLServer/Assignment-2"
+				},
+				"annotations": [],
+				"type": "SqlServerTable",
+				"schema": [],
+				"typeProperties": {
+					"schema": {
+						"value": "@dataset().SchemaName",
+						"type": "Expression"
+					},
+					"table": {
+						"value": "@dataset().TableName",
+						"type": "Expression"
+					}
+				}
+			},
+			"dependsOn": [
+				"[concat(variables('factoryId'), '/linkedServices/LocalSQLServer')]"
+			]
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/ds_source_SQL_Generic_IncrementalLoad')]",
+			"type": "Microsoft.DataFactory/factories/datasets",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"linkedServiceName": {
+					"referenceName": "LocalSQLServer",
+					"type": "LinkedServiceReference"
+				},
+				"parameters": {
+					"SchemaName": {
+						"type": "string"
+					},
+					"TableName": {
+						"type": "string"
+					},
+					"LastModified": {
+						"type": "string"
+					}
+				},
+				"folder": {
+					"name": "DS_LocalSQLServer/Assignment-3 Incremental Load"
+				},
+				"annotations": [],
+				"type": "SqlServerTable",
+				"schema": [],
+				"typeProperties": {
+					"schema": {
+						"value": "@dataset().SchemaName",
+						"type": "Expression"
+					},
+					"table": {
+						"value": "@dataset().TableName",
+						"type": "Expression"
+					}
+				}
+			},
+			"dependsOn": [
+				"[concat(variables('factoryId'), '/linkedServices/LocalSQLServer')]"
+			]
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/ds_source_SQL_Person_SqlServerTable')]",
+			"type": "Microsoft.DataFactory/factories/datasets",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"linkedServiceName": {
+					"referenceName": "LocalSQLServer",
+					"type": "LinkedServiceReference"
+				},
+				"folder": {
+					"name": "DS_LocalSQLServer/Assignment-1"
+				},
+				"annotations": [],
+				"type": "SqlServerTable",
+				"schema": [
+					{
+						"name": "BusinessEntityID",
+						"type": "int",
+						"precision": 10
+					},
+					{
+						"name": "PersonType",
+						"type": "nchar"
+					},
+					{
+						"name": "NameStyle",
+						"type": "bit"
+					},
+					{
+						"name": "Title",
+						"type": "nvarchar"
+					},
+					{
+						"name": "FirstName",
+						"type": "nvarchar"
+					},
+					{
+						"name": "MiddleName",
+						"type": "nvarchar"
+					},
+					{
+						"name": "LastName",
+						"type": "nvarchar"
+					},
+					{
+						"name": "Suffix",
+						"type": "nvarchar"
+					},
+					{
+						"name": "EmailPromotion",
+						"type": "int",
+						"precision": 10
+					},
+					{
+						"name": "AdditionalContactInfo",
+						"type": "xml"
+					},
+					{
+						"name": "Demographics",
+						"type": "xml"
+					},
+					{
+						"name": "rowguid",
+						"type": "uniqueidentifier"
+					},
+					{
+						"name": "ModifiedDate",
+						"type": "datetime",
+						"precision": 23,
+						"scale": 3
+					}
+				],
+				"typeProperties": {
+					"schema": "Person",
+					"table": "Person"
+				}
+			},
+			"dependsOn": [
+				"[concat(variables('factoryId'), '/linkedServices/LocalSQLServer')]"
+			]
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/dataflow_azure-sql_azure-sql_cdc')]",
+			"type": "Microsoft.DataFactory/factories/dataflows",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"folder": {
+					"name": "CDC"
+				},
+				"type": "MappingDataFlow",
+				"typeProperties": {
+					"sources": [
+						{
+							"dataset": {
+								"referenceName": "ds_source_azuresql_cdc",
+								"type": "DatasetReference"
+							},
+							"name": "AzureSQLDB"
+						}
+					],
+					"sinks": [
+						{
+							"dataset": {
+								"referenceName": "ds_sink_azure_sql_to_azure_sql_cdc",
+								"type": "DatasetReference"
+							},
+							"name": "AzureSQLCDCSink"
+						}
+					],
+					"transformations": [],
+					"scriptLines": [
+						"source(output(",
+						"          Id as integer,",
+						"          Name as string,",
+						"          Department as string,",
+						"          PhoneNumber as string,",
+						"          ModifiedDate as timestamp",
+						"     ),",
+						"     allowSchemaDrift: true,",
+						"     validateSchema: false,",
+						"     enableNativeCdc: true,",
+						"     netChanges: true,",
+						"     skipInitialLoad: false,",
+						"     isolationLevel: 'READ_UNCOMMITTED',",
+						"     format: 'table') ~> AzureSQLDB",
+						"AzureSQLDB sink(allowSchemaDrift: true,",
+						"     validateSchema: false,",
+						"     input(",
+						"          Id as integer,",
+						"          Name as string,",
+						"          Department as string,",
+						"          PhoneNumber as string,",
+						"          ModifiedDate as timestamp",
+						"     ),",
+						"     deletable:true,",
+						"     insertable:true,",
+						"     updateable:true,",
+						"     upsertable:true,",
+						"     keys:['Id'],",
+						"     format: 'table',",
+						"     skipDuplicateMapInputs: true,",
+						"     skipDuplicateMapOutputs: true,",
+						"     errorHandlingOption: 'stopOnFirstError',",
+						"     preCommands: [],",
+						"     postCommands: []) ~> AzureSQLCDCSink"
+					]
+				}
+			},
+			"dependsOn": []
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/dataflow_azure-sql_dl-csv_cdc')]",
+			"type": "Microsoft.DataFactory/factories/dataflows",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"folder": {
+					"name": "CDC"
+				},
+				"type": "MappingDataFlow",
+				"typeProperties": {
+					"sources": [
+						{
+							"dataset": {
+								"referenceName": "ds_source_azuresql_cdc",
+								"type": "DatasetReference"
+							},
+							"name": "AzureSQLDB"
+						}
+					],
+					"sinks": [
+						{
+							"dataset": {
+								"referenceName": "ds_sink_azure_sql_cdc",
+								"type": "DatasetReference"
+							},
+							"name": "AzureSQLCDCSink"
+						}
+					],
+					"transformations": [
+						{
+							"name": "AddOperationType",
+							"description": "Adding operation_type from CT table."
+						}
+					],
+					"scriptLines": [
+						"source(output(",
+						"          Id as integer,",
+						"          Name as string,",
+						"          Department as string,",
+						"          PhoneNumber as string,",
+						"          ModifiedDate as timestamp",
+						"     ),",
+						"     allowSchemaDrift: true,",
+						"     validateSchema: false,",
+						"     enableNativeCdc: true,",
+						"     netChanges: true,",
+						"     skipInitialLoad: false,",
+						"     isolationLevel: 'READ_UNCOMMITTED',",
+						"     format: 'table') ~> AzureSQLDB",
+						"AzureSQLDB derive(operation_type = iif(toString(`__$operation`) == '1', 'DELETE',\r",
+						"iif(toString(`__$operation`) == '2', 'INSERT',\r",
+						"iif(toString(`__$operation`) == '3', 'UPDATE_BEFORE',\r",
+						"iif(toString(`__$operation`) == '4', 'UPDATE_AFTER', 'UNKNOWN'))))) ~> AddOperationType",
+						"AddOperationType sink(allowSchemaDrift: true,",
+						"     validateSchema: false,",
+						"     umask: 0022,",
+						"     preCommands: [],",
+						"     postCommands: [],",
+						"     skipDuplicateMapInputs: true,",
+						"     skipDuplicateMapOutputs: true) ~> AzureSQLCDCSink"
+					]
+				}
+			},
+			"dependsOn": []
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/pipeline_Copy SQL Table to Blob Storage')]",
+			"type": "Microsoft.DataFactory/factories/pipelines",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"activities": [
+					{
+						"name": "Copy data from Local SQL to Blob",
+						"type": "Copy",
+						"dependsOn": [],
+						"policy": {
+							"timeout": "0.12:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"source": {
+								"type": "SqlServerSource",
+								"queryTimeout": "02:00:00",
+								"partitionOption": "None"
+							},
+							"sink": {
+								"type": "DelimitedTextSink",
+								"storeSettings": {
+									"type": "AzureBlobStorageWriteSettings"
+								},
+								"formatSettings": {
+									"type": "DelimitedTextWriteSettings",
+									"quoteAllText": true,
+									"fileExtension": ".txt"
+								}
+							},
+							"enableStaging": false,
+							"translator": {
+								"type": "TabularTranslator",
+								"typeConversion": true,
+								"typeConversionSettings": {
+									"allowDataTruncation": true,
+									"treatBooleanAsNumber": false
+								}
+							}
+						},
+						"inputs": [
+							{
+								"referenceName": "ds_source_SQL_Person_SqlServerTable",
+								"type": "DatasetReference",
+								"parameters": {}
+							}
+						],
+						"outputs": [
+							{
+								"referenceName": "ds_sink_Blob_PersonCSV",
+								"type": "DatasetReference",
+								"parameters": {}
+							}
+						]
+					}
+				],
+				"policy": {
+					"elapsedTimeMetric": {}
+				},
+				"annotations": [],
+				"lastPublishTime": "2025-06-25T13:02:43Z"
+			},
+			"dependsOn": [
+				"[concat(variables('factoryId'), '/datasets/ds_source_SQL_Person_SqlServerTable')]"
+			]
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/pl_assignment_2_CopyMultipleTables')]",
+			"type": "Microsoft.DataFactory/factories/pipelines",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"activities": [
+					{
+						"name": "Lookup-Config File",
+						"type": "Lookup",
+						"dependsOn": [],
+						"policy": {
+							"timeout": "0.12:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"source": {
+								"type": "DelimitedTextSource",
+								"storeSettings": {
+									"type": "AzureBlobStorageReadSettings",
+									"recursive": true,
+									"enablePartitionDiscovery": false
+								},
+								"formatSettings": {
+									"type": "DelimitedTextReadSettings"
+								}
+							},
+							"dataset": {
+								"referenceName": "ds_source_config_file",
+								"type": "DatasetReference",
+								"parameters": {}
+							},
+							"firstRowOnly": false
+						}
+					},
+					{
+						"name": "ForEach Lookup",
+						"type": "ForEach",
+						"dependsOn": [
+							{
+								"activity": "Lookup-Config File",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"userProperties": [],
+						"typeProperties": {
+							"items": {
+								"value": "@activity('Lookup-Config File').output.value",
+								"type": "Expression"
+							},
+							"activities": [
+								{
+									"name": "Copy data",
+									"type": "Copy",
+									"dependsOn": [],
+									"policy": {
+										"timeout": "0.12:00:00",
+										"retry": 0,
+										"retryIntervalInSeconds": 30,
+										"secureOutput": false,
+										"secureInput": false
+									},
+									"userProperties": [],
+									"typeProperties": {
+										"source": {
+											"type": "SqlServerSource",
+											"queryTimeout": "02:00:00",
+											"partitionOption": "None"
+										},
+										"sink": {
+											"type": "DelimitedTextSink",
+											"storeSettings": {
+												"type": "AzureBlobStorageWriteSettings"
+											},
+											"formatSettings": {
+												"type": "DelimitedTextWriteSettings",
+												"quoteAllText": true,
+												"fileExtension": ".txt"
+											}
+										},
+										"enableStaging": false,
+										"translator": {
+											"type": "TabularTranslator",
+											"typeConversion": true,
+											"typeConversionSettings": {
+												"allowDataTruncation": true,
+												"treatBooleanAsNumber": false
+											}
+										}
+									},
+									"inputs": [
+										{
+											"referenceName": "ds_source_SQL_Generic",
+											"type": "DatasetReference",
+											"parameters": {
+												"SchemaName": {
+													"value": "@item().SchemaName",
+													"type": "Expression"
+												},
+												"TableName": {
+													"value": "@item().TableName",
+													"type": "Expression"
+												}
+											}
+										}
+									],
+									"outputs": [
+										{
+											"referenceName": "ds_sink_Blob_Generic",
+											"type": "DatasetReference",
+											"parameters": {
+												"OutputFileName": {
+													"value": "@item().OutputFileName",
+													"type": "Expression"
+												}
+											}
+										}
+									]
+								}
+							]
+						}
+					}
+				],
+				"policy": {
+					"elapsedTimeMetric": {}
+				},
+				"variables": {
+					"debugOutput": {
+						"type": "String"
+					}
+				},
+				"annotations": [],
+				"lastPublishTime": "2025-07-22T13:40:45Z"
+			},
+			"dependsOn": [
+				"[concat(variables('factoryId'), '/datasets/ds_source_config_file')]",
+				"[concat(variables('factoryId'), '/datasets/ds_source_SQL_Generic')]"
+			]
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/pl_assignment_3_IncrementalLoad')]",
+			"type": "Microsoft.DataFactory/factories/pipelines",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"description": "To load tables using ModifiedDate in SQL DB(and in our source Dataset) and a Pipeline parameter - lastRunDate.",
+				"activities": [
+					{
+						"name": "Lookup-Config File",
+						"type": "Lookup",
+						"dependsOn": [],
+						"policy": {
+							"timeout": "0.12:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"source": {
+								"type": "DelimitedTextSource",
+								"storeSettings": {
+									"type": "AzureBlobStorageReadSettings",
+									"recursive": true,
+									"enablePartitionDiscovery": false
+								},
+								"formatSettings": {
+									"type": "DelimitedTextReadSettings"
+								}
+							},
+							"dataset": {
+								"referenceName": "ds_source_config_file",
+								"type": "DatasetReference",
+								"parameters": {}
+							},
+							"firstRowOnly": false
+						}
+					},
+					{
+						"name": "ForEach Lookup",
+						"type": "ForEach",
+						"dependsOn": [
+							{
+								"activity": "Lookup-Config File",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"userProperties": [],
+						"typeProperties": {
+							"items": {
+								"value": "@activity('Lookup-Config File').output.value",
+								"type": "Expression"
+							},
+							"activities": [
+								{
+									"name": "Copy data",
+									"type": "Copy",
+									"dependsOn": [],
+									"policy": {
+										"timeout": "0.12:00:00",
+										"retry": 0,
+										"retryIntervalInSeconds": 30,
+										"secureOutput": false,
+										"secureInput": false
+									},
+									"userProperties": [],
+									"typeProperties": {
+										"source": {
+											"type": "SqlServerSource",
+											"sqlReaderQuery": {
+												"value": "@concat(\n  'SELECT * FROM ',\n  item().SchemaName, '.', item().TableName,\n  ' WHERE ModifiedDate > ''', pipeline().parameters.lastRunDate, ''''\n)\n",
+												"type": "Expression"
+											},
+											"queryTimeout": "02:00:00",
+											"partitionOption": "None"
+										},
+										"sink": {
+											"type": "DelimitedTextSink",
+											"storeSettings": {
+												"type": "AzureBlobStorageWriteSettings"
+											},
+											"formatSettings": {
+												"type": "DelimitedTextWriteSettings",
+												"quoteAllText": true,
+												"fileExtension": ".txt"
+											}
+										},
+										"enableStaging": false,
+										"translator": {
+											"type": "TabularTranslator",
+											"typeConversion": true,
+											"typeConversionSettings": {
+												"allowDataTruncation": true,
+												"treatBooleanAsNumber": false
+											}
+										}
+									},
+									"inputs": [
+										{
+											"referenceName": "ds_source_SQL_Generic_IncrementalLoad",
+											"type": "DatasetReference",
+											"parameters": {
+												"SchemaName": {
+													"value": "@item().SchemaName",
+													"type": "Expression"
+												},
+												"TableName": {
+													"value": "@item().TableName",
+													"type": "Expression"
+												},
+												"LastModified": {
+													"value": "@pipeline().parameters.lastRunDate",
+													"type": "Expression"
+												}
+											}
+										}
+									],
+									"outputs": [
+										{
+											"referenceName": "ds_sink_Blob_Generic_IncrementalLoad",
+											"type": "DatasetReference",
+											"parameters": {
+												"OutputFileName": {
+													"value": "@concat(item().OutputFileName, formatDateTime(utcNow(), 'yyyyMMdd_HHmmss'))\r\n",
+													"type": "Expression"
+												}
+											}
+										}
+									]
+								},
+								{
+									"name": "Set variable",
+									"type": "SetVariable",
+									"dependsOn": [],
+									"policy": {
+										"secureOutput": false,
+										"secureInput": false
+									},
+									"userProperties": [],
+									"typeProperties": {
+										"variableName": "CurrentRunDate",
+										"value": {
+											"value": "@utcNow()",
+											"type": "Expression"
+										}
+									}
+								}
+							]
+						}
+					}
+				],
+				"policy": {
+					"elapsedTimeMetric": {}
+				},
+				"parameters": {
+					"lastRunDate": {
+						"type": "string",
+						"defaultValue": "2000-07-22T00:00:00Z"
+					},
+					"currentRunDate": {
+						"type": "string"
+					}
+				},
+				"variables": {
+					"CurrentRunDate": {
+						"type": "String"
+					}
+				},
+				"annotations": [],
+				"lastPublishTime": "2025-07-23T06:27:08Z"
+			},
+			"dependsOn": [
+				"[concat(variables('factoryId'), '/datasets/ds_source_config_file')]",
+				"[concat(variables('factoryId'), '/datasets/ds_source_SQL_Generic_IncrementalLoad')]"
+			]
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/pl_azure-sql_azure-sql_cdc')]",
+			"type": "Microsoft.DataFactory/factories/pipelines",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"activities": [
+					{
+						"name": "dataflow_azure_sql_azure_sql_cdc",
+						"type": "ExecuteDataFlow",
+						"dependsOn": [],
+						"policy": {
+							"timeout": "0.12:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"dataflow": {
+								"referenceName": "dataflow_azure-sql_azure-sql_cdc",
+								"type": "DataFlowReference",
+								"parameters": {},
+								"datasetParameters": {
+									"AzureSQLDB": {},
+									"AzureSQLCDCSink": {}
+								}
+							},
+							"staging": {},
+							"compute": {
+								"coreCount": 8,
+								"computeType": "General"
+							},
+							"traceLevel": "Fine",
+							"continuationSettings": {
+								"customizedCheckpointKey": "352f8fef-5b52-455b-8fb2-3e266f403f6d"
+							}
+						}
+					}
+				],
+				"policy": {
+					"elapsedTimeMetric": {}
+				},
+				"folder": {
+					"name": "CDC"
+				},
+				"annotations": [],
+				"lastPublishTime": "2025-07-25T13:01:28Z"
+			},
+			"dependsOn": [
+				"[concat(variables('factoryId'), '/dataflows/dataflow_azure-sql_azure-sql_cdc')]"
+			]
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/pl_azure-sql_dl-csv_cdc')]",
+			"type": "Microsoft.DataFactory/factories/pipelines",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"activities": [
+					{
+						"name": "dataflow_localsql_cdc_db",
+						"type": "ExecuteDataFlow",
+						"dependsOn": [],
+						"policy": {
+							"timeout": "0.12:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"dataflow": {
+								"referenceName": "dataflow_azure-sql_dl-csv_cdc",
+								"type": "DataFlowReference",
+								"parameters": {},
+								"datasetParameters": {
+									"AzureSQLDB": {},
+									"AzureSQLCDCSink": {}
+								}
+							},
+							"staging": {},
+							"compute": {
+								"coreCount": 8,
+								"computeType": "General"
+							},
+							"traceLevel": "Fine",
+							"continuationSettings": {
+								"customizedCheckpointKey": "6c393dde-08f9-466a-9213-7a0c3c31956a"
+							}
+						}
+					}
+				],
+				"policy": {
+					"elapsedTimeMetric": {}
+				},
+				"folder": {
+					"name": "CDC"
+				},
+				"annotations": [],
+				"lastPublishTime": "2025-07-25T13:01:28Z"
+			},
+			"dependsOn": [
+				"[concat(variables('factoryId'), '/dataflows/dataflow_azure-sql_dl-csv_cdc')]"
+			]
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/trigger_cdc')]",
+			"type": "Microsoft.DataFactory/factories/triggers",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"annotations": [],
+				"runtimeState": "Started",
+				"pipelines": [
+					{
+						"pipelineReference": {
+							"referenceName": "pl_IncrementalCopyPipeline_MS-Learn_CDC_Generic_NW",
+							"type": "PipelineReference"
+						},
+						"parameters": {
+							"triggerStartTime": "[parameters('trigger_cdc_properties_pl_IncrementalCopyPipeline_MS-Learn_CDC_Generic_NW_parameters_triggerStartTime')]",
+							"triggerEndTime": "[parameters('trigger_cdc_properties_pl_IncrementalCopyPipeline_MS-Learn_CDC_Generic_NW_parameters_triggerEndTime')]"
+						}
+					}
+				],
+				"type": "ScheduleTrigger",
+				"typeProperties": {
+					"recurrence": {
+						"frequency": "Minute",
+						"interval": 5,
+						"startTime": "2025-07-26T12:35:00",
+						"timeZone": "India Standard Time"
+					}
+				}
+			},
+			"dependsOn": [
+				"[concat(variables('factoryId'), '/pipelines/pl_IncrementalCopyPipeline_MS-Learn_CDC_Generic_NW')]"
+			]
+		}
+	]
+}

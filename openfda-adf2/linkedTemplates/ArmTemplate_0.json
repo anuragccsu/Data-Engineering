@@ -1,0 +1,710 @@
+{
+	"$schema": "http://schema.management.azure.com/schemas/2015-01-01/deploymentTemplate.json#",
+	"contentVersion": "1.0.0.0",
+	"parameters": {
+		"factoryName": {
+			"type": "string",
+			"metadata": "Data Factory name",
+			"defaultValue": "openfda-adf2"
+		},
+		"AzureBlobStorageForLocalSQLServer_connectionString": {
+			"type": "secureString",
+			"metadata": "Secure string for 'connectionString' of 'AzureBlobStorageForLocalSQLServer'"
+		},
+		"ls_adls_accountKey": {
+			"type": "secureString",
+			"metadata": "Secure string for 'accountKey' of 'ls_adls'"
+		},
+		"ls_adls_generic_accountKey": {
+			"type": "secureString",
+			"metadata": "Secure string for 'accountKey' of 'ls_adls_generic'"
+		},
+		"ls_azure_sql_db_password": {
+			"type": "secureString",
+			"metadata": "Secure string for 'password' of 'ls_azure_sql_db'"
+		},
+		"ls_OpenFDA_REST_properties_typeProperties_url": {
+			"type": "string",
+			"defaultValue": "https://api.fda.gov/"
+		},
+		"ls_adls_properties_typeProperties_url": {
+			"type": "string",
+			"defaultValue": "https://openfda.dfs.core.windows.net/"
+		},
+		"ls_adls_generic_properties_typeProperties_url": {
+			"type": "string",
+			"defaultValue": "https://localsqlstorageforadf.dfs.core.windows.net/"
+		},
+		"ls_azure_sql_db_properties_typeProperties_server": {
+			"type": "string",
+			"defaultValue": "avcovid-srv.database.windows.net"
+		},
+		"ls_azure_sql_db_properties_typeProperties_database": {
+			"type": "string",
+			"defaultValue": "azure_sql_db"
+		},
+		"ls_azure_sql_db_properties_typeProperties_userName": {
+			"type": "string",
+			"defaultValue": "adm"
+		}
+	},
+	"variables": {
+		"factoryId": "[concat('Microsoft.DataFactory/factories/', parameters('factoryName'))]"
+	},
+	"resources": [
+		{
+			"name": "[concat(parameters('factoryName'), '/pipeline_openfda_debug')]",
+			"type": "Microsoft.DataFactory/factories/pipelines",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"activities": [
+					{
+						"name": "ForEach",
+						"type": "ForEach",
+						"dependsOn": [],
+						"userProperties": [],
+						"typeProperties": {
+							"items": {
+								"value": "@range(0, 5)",
+								"type": "Expression"
+							},
+							"isSequential": false,
+							"activities": [
+								{
+									"name": "Set variable Debug",
+									"type": "SetVariable",
+									"dependsOn": [],
+									"policy": {
+										"secureOutput": false,
+										"secureInput": false
+									},
+									"userProperties": [],
+									"typeProperties": {
+										"variableName": "pl_var_test_relative_url",
+										"value": {
+											"value": "@concat('drug/event.json?search=receivedate:[20250101+TO+20250131]&limit=100&skip=', string(item()))",
+											"type": "Expression"
+										}
+									}
+								}
+							]
+						}
+					}
+				],
+				"policy": {
+					"elapsedTimeMetric": {}
+				},
+				"variables": {
+					"var_record_count": {
+						"type": "Integer"
+					},
+					"var_page_count": {
+						"type": "Integer"
+					},
+					"pl_var_test_relative_url": {
+						"type": "String"
+					}
+				},
+				"folder": {
+					"name": "openFDA"
+				},
+				"annotations": [],
+				"lastPublishTime": "2025-07-22T09:49:45Z"
+			},
+			"dependsOn": []
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/AzureBlobStorageForLocalSQLServer')]",
+			"type": "Microsoft.DataFactory/factories/linkedServices",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"annotations": [],
+				"type": "AzureBlobStorage",
+				"typeProperties": {
+					"connectionString": "[parameters('AzureBlobStorageForLocalSQLServer_connectionString')]"
+				}
+			},
+			"dependsOn": []
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/ls_OpenFDA_REST')]",
+			"type": "Microsoft.DataFactory/factories/linkedServices",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"description": "Linked Service for openFDA REST API",
+				"annotations": [],
+				"type": "RestService",
+				"typeProperties": {
+					"url": "[parameters('ls_OpenFDA_REST_properties_typeProperties_url')]",
+					"enableServerCertificateValidation": true,
+					"authenticationType": "Anonymous"
+				}
+			},
+			"dependsOn": []
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/ls_adls')]",
+			"type": "Microsoft.DataFactory/factories/linkedServices",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"annotations": [],
+				"type": "AzureBlobFS",
+				"typeProperties": {
+					"url": "[parameters('ls_adls_properties_typeProperties_url')]",
+					"accountKey": {
+						"type": "SecureString",
+						"value": "[parameters('ls_adls_accountKey')]"
+					}
+				}
+			},
+			"dependsOn": []
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/ls_adls_generic')]",
+			"type": "Microsoft.DataFactory/factories/linkedServices",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"description": "The generic ADLS Gen2 Linked Service. It expects the name of container as it's parameter.",
+				"parameters": {
+					"datalake_container": {
+						"type": "string"
+					}
+				},
+				"annotations": [],
+				"type": "AzureBlobFS",
+				"typeProperties": {
+					"url": "[parameters('ls_adls_generic_properties_typeProperties_url')]",
+					"accountKey": {
+						"type": "SecureString",
+						"value": "[parameters('ls_adls_generic_accountKey')]"
+					}
+				}
+			},
+			"dependsOn": []
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/ls_azure_sql_db')]",
+			"type": "Microsoft.DataFactory/factories/linkedServices",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"description": "The link service connects to the Azure SQL DB",
+				"parameters": {
+					"DatabaesName": {
+						"type": "string",
+						"defaultValue": "azure_sql_db"
+					}
+				},
+				"annotations": [],
+				"type": "AzureSqlDatabase",
+				"typeProperties": {
+					"server": "[parameters('ls_azure_sql_db_properties_typeProperties_server')]",
+					"database": "[parameters('ls_azure_sql_db_properties_typeProperties_database')]",
+					"encrypt": "mandatory",
+					"trustServerCertificate": true,
+					"authenticationType": "SQL",
+					"userName": "[parameters('ls_azure_sql_db_properties_typeProperties_userName')]",
+					"password": {
+						"type": "SecureString",
+						"value": "[parameters('ls_azure_sql_db_password')]"
+					}
+				}
+			},
+			"dependsOn": []
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/SHIR-LocalSQL-integrationRuntime')]",
+			"type": "Microsoft.DataFactory/factories/integrationRuntimes",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"type": "SelfHosted",
+				"description": "To access my laptops local MS SQL server.",
+				"typeProperties": {}
+			},
+			"dependsOn": []
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/ds_sink_Blob_Generic')]",
+			"type": "Microsoft.DataFactory/factories/datasets",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"description": "To put multiple tables from On-Prem SQL server to the Data lake.",
+				"linkedServiceName": {
+					"referenceName": "AzureBlobStorageForLocalSQLServer",
+					"type": "LinkedServiceReference"
+				},
+				"parameters": {
+					"OutputFileName": {
+						"type": "string"
+					}
+				},
+				"folder": {
+					"name": "DS_LocalSQLServer/Assignment-2"
+				},
+				"annotations": [],
+				"type": "DelimitedText",
+				"typeProperties": {
+					"location": {
+						"type": "AzureBlobStorageLocation",
+						"fileName": {
+							"value": "@{dataset().OutputFileName}.csv",
+							"type": "Expression"
+						},
+						"folderPath": "adf-assignment2",
+						"container": "adf-output"
+					},
+					"columnDelimiter": ",",
+					"escapeChar": "\\",
+					"firstRowAsHeader": true,
+					"quoteChar": "\""
+				},
+				"schema": []
+			},
+			"dependsOn": [
+				"[concat(variables('factoryId'), '/linkedServices/AzureBlobStorageForLocalSQLServer')]"
+			]
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/ds_sink_Blob_Generic_IncrementalLoad')]",
+			"type": "Microsoft.DataFactory/factories/datasets",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"description": "To put multiple tables from On-Prem SQL server to the Data lake.",
+				"linkedServiceName": {
+					"referenceName": "AzureBlobStorageForLocalSQLServer",
+					"type": "LinkedServiceReference"
+				},
+				"parameters": {
+					"OutputFileName": {
+						"type": "string"
+					}
+				},
+				"folder": {
+					"name": "DS_LocalSQLServer/Assignment-3 Incremental Load"
+				},
+				"annotations": [],
+				"type": "DelimitedText",
+				"typeProperties": {
+					"location": {
+						"type": "AzureBlobStorageLocation",
+						"fileName": {
+							"value": "@{dataset().OutputFileName}.csv",
+							"type": "Expression"
+						},
+						"folderPath": "adf-assignment3",
+						"container": "adf-output"
+					},
+					"columnDelimiter": ",",
+					"escapeChar": "\\",
+					"firstRowAsHeader": true,
+					"quoteChar": "\""
+				},
+				"schema": []
+			},
+			"dependsOn": [
+				"[concat(variables('factoryId'), '/linkedServices/AzureBlobStorageForLocalSQLServer')]"
+			]
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/ds_sink_Blob_PersonCSV')]",
+			"type": "Microsoft.DataFactory/factories/datasets",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"linkedServiceName": {
+					"referenceName": "AzureBlobStorageForLocalSQLServer",
+					"type": "LinkedServiceReference"
+				},
+				"folder": {
+					"name": "DS_LocalSQLServer/Assignment-1"
+				},
+				"annotations": [],
+				"type": "DelimitedText",
+				"typeProperties": {
+					"location": {
+						"type": "AzureBlobStorageLocation",
+						"container": "adf-output"
+					},
+					"columnDelimiter": ",",
+					"escapeChar": "\\",
+					"firstRowAsHeader": true,
+					"quoteChar": "\""
+				},
+				"schema": []
+			},
+			"dependsOn": [
+				"[concat(variables('factoryId'), '/linkedServices/AzureBlobStorageForLocalSQLServer')]"
+			]
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/ds_sink_OpenFDA_adls')]",
+			"type": "Microsoft.DataFactory/factories/datasets",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"linkedServiceName": {
+					"referenceName": "ls_adls",
+					"type": "LinkedServiceReference"
+				},
+				"folder": {
+					"name": "openFDA"
+				},
+				"annotations": [],
+				"type": "Json",
+				"typeProperties": {
+					"location": {
+						"type": "AzureBlobFSLocation",
+						"fileName": {
+							"value": "openfda_2025_01_batch_@{item()}.json",
+							"type": "Expression"
+						},
+						"folderPath": "openfda/adverse_events/2025-01/",
+						"fileSystem": "raw"
+					}
+				},
+				"schema": {}
+			},
+			"dependsOn": [
+				"[concat(variables('factoryId'), '/linkedServices/ls_adls')]"
+			]
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/ds_sink_SinkDataset')]",
+			"type": "Microsoft.DataFactory/factories/datasets",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"linkedServiceName": {
+					"referenceName": "ls_adls_generic",
+					"type": "LinkedServiceReference",
+					"parameters": {
+						"datalake_container": "azure-sql-dl"
+					}
+				},
+				"folder": {
+					"name": "AzureSQL_CDC/CDC-3"
+				},
+				"annotations": [],
+				"type": "DelimitedText",
+				"typeProperties": {
+					"location": {
+						"type": "AzureBlobFSLocation",
+						"fileName": {
+							"value": "@concat('Incremental-', pipeline().RunId, '.txt')",
+							"type": "Expression"
+						},
+						"folderPath": "incrementalcopy ",
+						"fileSystem": "azure-sql-dl"
+					},
+					"columnDelimiter": ",",
+					"escapeChar": "\\",
+					"firstRowAsHeader": true,
+					"quoteChar": "\""
+				},
+				"schema": []
+			},
+			"dependsOn": [
+				"[concat(variables('factoryId'), '/linkedServices/ls_adls_generic')]"
+			]
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/ds_sink_azure_sql_cdc')]",
+			"type": "Microsoft.DataFactory/factories/datasets",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"linkedServiceName": {
+					"referenceName": "ls_adls",
+					"type": "LinkedServiceReference"
+				},
+				"folder": {
+					"name": "AzureSQL_CDC"
+				},
+				"annotations": [],
+				"type": "DelimitedText",
+				"typeProperties": {
+					"location": {
+						"type": "AzureBlobFSLocation",
+						"fileSystem": "azure-sql-dl"
+					},
+					"columnDelimiter": ",",
+					"escapeChar": "\\",
+					"firstRowAsHeader": false,
+					"quoteChar": null
+				},
+				"schema": []
+			},
+			"dependsOn": [
+				"[concat(variables('factoryId'), '/linkedServices/ls_adls')]"
+			]
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/ds_sink_azure_sql_datalake_cdc')]",
+			"type": "Microsoft.DataFactory/factories/datasets",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"description": "The sink to ADLS Gen2 Blob",
+				"linkedServiceName": {
+					"referenceName": "ls_adls",
+					"type": "LinkedServiceReference"
+				},
+				"folder": {
+					"name": "AzureSQL_CDC"
+				},
+				"annotations": [],
+				"type": "DelimitedText",
+				"typeProperties": {
+					"location": {
+						"type": "AzureBlobFSLocation",
+						"fileSystem": "azure-sql-dl"
+					},
+					"columnDelimiter": ",",
+					"escapeChar": "\\",
+					"firstRowAsHeader": true,
+					"quoteChar": null
+				},
+				"schema": []
+			},
+			"dependsOn": [
+				"[concat(variables('factoryId'), '/linkedServices/ls_adls')]"
+			]
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/ds_sink_azure_sql_to_azure_sql_cdc')]",
+			"type": "Microsoft.DataFactory/factories/datasets",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"linkedServiceName": {
+					"referenceName": "ls_azure_sql_db",
+					"type": "LinkedServiceReference",
+					"parameters": {
+						"DatabaesName": "azure_sql_db"
+					}
+				},
+				"folder": {
+					"name": "AzureSQL_CDC"
+				},
+				"annotations": [],
+				"type": "AzureSqlTable",
+				"schema": [
+					{
+						"name": "Id",
+						"type": "int",
+						"precision": 10
+					},
+					{
+						"name": "Name",
+						"type": "nvarchar"
+					},
+					{
+						"name": "Department",
+						"type": "nvarchar"
+					},
+					{
+						"name": "PhoneNumber",
+						"type": "nvarchar"
+					},
+					{
+						"name": "ModifiedDate",
+						"type": "datetime",
+						"precision": 23,
+						"scale": 3
+					}
+				],
+				"typeProperties": {
+					"schema": "SchemaTBA",
+					"table": "TableTBA"
+				}
+			},
+			"dependsOn": [
+				"[concat(variables('factoryId'), '/linkedServices/ls_azure_sql_db')]"
+			]
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/ds_source_OpenFDA_JSON')]",
+			"type": "Microsoft.DataFactory/factories/datasets",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"linkedServiceName": {
+					"referenceName": "ls_OpenFDA_REST",
+					"type": "LinkedServiceReference"
+				},
+				"parameters": {
+					"relativeUrl": {
+						"type": "string"
+					}
+				},
+				"folder": {
+					"name": "openFDA"
+				},
+				"annotations": [],
+				"type": "RestResource",
+				"typeProperties": {
+					"relativeUrl": {
+						"value": "@dataset().relativeUrl",
+						"type": "Expression"
+					}
+				},
+				"schema": []
+			},
+			"dependsOn": [
+				"[concat(variables('factoryId'), '/linkedServices/ls_OpenFDA_REST')]"
+			]
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/ds_source_SourceDataset')]",
+			"type": "Microsoft.DataFactory/factories/datasets",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"linkedServiceName": {
+					"referenceName": "ls_azure_sql_db",
+					"type": "LinkedServiceReference",
+					"parameters": {
+						"DatabaesName": "azure_sql_db"
+					}
+				},
+				"folder": {
+					"name": "AzureSQL_CDC/CDC-3"
+				},
+				"annotations": [],
+				"type": "AzureSqlTable",
+				"schema": [
+					{
+						"name": "PersonID",
+						"type": "int",
+						"precision": 10
+					},
+					{
+						"name": "Name",
+						"type": "varchar"
+					},
+					{
+						"name": "LastModifytime",
+						"type": "datetime",
+						"precision": 23,
+						"scale": 3
+					}
+				],
+				"typeProperties": {
+					"schema": "dbo",
+					"table": "data_source_table"
+				}
+			},
+			"dependsOn": [
+				"[concat(variables('factoryId'), '/linkedServices/ls_azure_sql_db')]"
+			]
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/ds_source_WatermarkDataset')]",
+			"type": "Microsoft.DataFactory/factories/datasets",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"linkedServiceName": {
+					"referenceName": "ls_azure_sql_db",
+					"type": "LinkedServiceReference",
+					"parameters": {
+						"DatabaesName": "azure_sql_db"
+					}
+				},
+				"folder": {
+					"name": "AzureSQL_CDC/CDC-3"
+				},
+				"annotations": [],
+				"type": "AzureSqlTable",
+				"schema": [
+					{
+						"name": "TableName",
+						"type": "varchar"
+					},
+					{
+						"name": "WatermarkValue",
+						"type": "datetime",
+						"precision": 23,
+						"scale": 3
+					}
+				],
+				"typeProperties": {
+					"schema": "dbo",
+					"table": "watermarktable"
+				}
+			},
+			"dependsOn": [
+				"[concat(variables('factoryId'), '/linkedServices/ls_azure_sql_db')]"
+			]
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/ds_source_azuresql_cdc')]",
+			"type": "Microsoft.DataFactory/factories/datasets",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"linkedServiceName": {
+					"referenceName": "ls_azure_sql_db",
+					"type": "LinkedServiceReference",
+					"parameters": {
+						"DatabaesName": "azure_sql_db"
+					}
+				},
+				"folder": {
+					"name": "AzureSQL_CDC"
+				},
+				"annotations": [],
+				"type": "AzureSqlTable",
+				"schema": [
+					{
+						"name": "Id",
+						"type": "int",
+						"precision": 10
+					},
+					{
+						"name": "Name",
+						"type": "nvarchar"
+					},
+					{
+						"name": "Department",
+						"type": "nvarchar"
+					},
+					{
+						"name": "PhoneNumber",
+						"type": "nvarchar"
+					},
+					{
+						"name": "ModifiedDate",
+						"type": "datetime",
+						"precision": 23,
+						"scale": 3
+					}
+				],
+				"typeProperties": {
+					"schema": "dbo",
+					"table": "data_source_table"
+				}
+			},
+			"dependsOn": [
+				"[concat(variables('factoryId'), '/linkedServices/ls_azure_sql_db')]"
+			]
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/ds_source_azuresql_datalake_cdc')]",
+			"type": "Microsoft.DataFactory/factories/datasets",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"description": "This is from MS Learn CDC blog. dbo.customer table.",
+				"linkedServiceName": {
+					"referenceName": "ls_azure_sql_db",
+					"type": "LinkedServiceReference",
+					"parameters": {
+						"DatabaesName": "azure_sql_db"
+					}
+				},
+				"folder": {
+					"name": "AzureSQL_CDC"
+				},
+				"annotations": [],
+				"type": "AzureSqlTable",
+				"schema": [],
+				"typeProperties": {
+					"schema": "dbo",
+					"table": "data_source_table"
+				}
+			},
+			"dependsOn": [
+				"[concat(variables('factoryId'), '/linkedServices/ls_azure_sql_db')]"
+			]
+		}
+	]
+}

@@ -1,0 +1,57 @@
+{
+	"$schema": "https://schema.management.azure.com/schemas/2015-01-01/deploymentParameters.json#",
+	"contentVersion": "1.0.0.0",
+	"parameters": {
+		"factoryName": {
+			"value": "openfda-adf2"
+		},
+		"AzureBlobStorageForLocalSQLServer_connectionString": {
+			"value": ""
+		},
+		"LocalSQLServer_password": {
+			"value": ""
+		},
+		"ls_adls_accountKey": {
+			"value": ""
+		},
+		"ls_adls_generic_accountKey": {
+			"value": ""
+		},
+		"ls_azure_sql_db_password": {
+			"value": ""
+		},
+		"LocalSQLServer_properties_typeProperties_server": {
+			"value": "OVIYA\\AVMSSQL_1"
+		},
+		"LocalSQLServer_properties_typeProperties_database": {
+			"value": "AdventureWorks2019"
+		},
+		"LocalSQLServer_properties_typeProperties_userName": {
+			"value": "adf_user"
+		},
+		"ls_OpenFDA_REST_properties_typeProperties_url": {
+			"value": "https://api.fda.gov/"
+		},
+		"ls_adls_properties_typeProperties_url": {
+			"value": "https://openfda.dfs.core.windows.net/"
+		},
+		"ls_adls_generic_properties_typeProperties_url": {
+			"value": "https://localsqlstorageforadf.dfs.core.windows.net/"
+		},
+		"ls_azure_sql_db_properties_typeProperties_server": {
+			"value": "avcovid-srv.database.windows.net"
+		},
+		"ls_azure_sql_db_properties_typeProperties_database": {
+			"value": "azure_sql_db"
+		},
+		"ls_azure_sql_db_properties_typeProperties_userName": {
+			"value": "adm"
+		},
+		"trigger_cdc_properties_pl_IncrementalCopyPipeline_MS-Learn_CDC_Generic_NW_parameters_triggerStartTime": {
+			"value": "12:30:00.000"
+		},
+		"trigger_cdc_properties_pl_IncrementalCopyPipeline_MS-Learn_CDC_Generic_NW_parameters_triggerEndTime": {
+			"value": "12:35:00.000"
+		}
+	}
+}

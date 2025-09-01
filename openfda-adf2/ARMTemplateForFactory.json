@@ -62,14 +62,6 @@
 		"ls_azure_sql_db_properties_typeProperties_userName": {
 			"type": "string",
 			"defaultValue": "adm"
-		},
-		"trigger_cdc_properties_pl_IncrementalCopyPipeline_MS-Learn_CDC_Generic_NW_parameters_triggerStartTime": {
-			"type": "string",
-			"defaultValue": "12:30:00.000"
-		},
-		"trigger_cdc_properties_pl_IncrementalCopyPipeline_MS-Learn_CDC_Generic_NW_parameters_triggerEndTime": {
-			"type": "string",
-			"defaultValue": "12:35:00.000"
 		}
 	},
 	"variables": {
@@ -2098,39 +2090,6 @@
 				}
 			},
 			"dependsOn": []
-		},
-		{
-			"name": "[concat(parameters('factoryName'), '/trigger_cdc')]",
-			"type": "Microsoft.DataFactory/factories/triggers",
-			"apiVersion": "2018-06-01",
-			"properties": {
-				"annotations": [],
-				"runtimeState": "Started",
-				"pipelines": [
-					{
-						"pipelineReference": {
-							"referenceName": "pl_IncrementalCopyPipeline_MS-Learn_CDC_Generic_NW",
-							"type": "PipelineReference"
-						},
-						"parameters": {
-							"triggerStartTime": "[parameters('trigger_cdc_properties_pl_IncrementalCopyPipeline_MS-Learn_CDC_Generic_NW_parameters_triggerStartTime')]",
-							"triggerEndTime": "[parameters('trigger_cdc_properties_pl_IncrementalCopyPipeline_MS-Learn_CDC_Generic_NW_parameters_triggerEndTime')]"
-						}
-					}
-				],
-				"type": "ScheduleTrigger",
-				"typeProperties": {
-					"recurrence": {
-						"frequency": "Minute",
-						"interval": 5,
-						"startTime": "2025-07-26T12:35:00",
-						"timeZone": "India Standard Time"
-					}
-				}
-			},
-			"dependsOn": [
-				"[concat(variables('factoryId'), '/pipelines/pl_IncrementalCopyPipeline_MS-Learn_CDC_Generic_NW')]"
-			]
 		},
 		{
 			"name": "[concat(parameters('factoryName'), '/SHIR-LocalSQL-integrationRuntime')]",

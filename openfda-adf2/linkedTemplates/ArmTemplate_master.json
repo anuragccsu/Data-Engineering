@@ -63,14 +63,6 @@
 			"type": "string",
 			"defaultValue": "adm"
 		},
-		"trigger_cdc_properties_pl_IncrementalCopyPipeline_MS-Learn_CDC_Generic_NW_parameters_triggerStartTime": {
-			"type": "string",
-			"defaultValue": "12:30:00.000"
-		},
-		"trigger_cdc_properties_pl_IncrementalCopyPipeline_MS-Learn_CDC_Generic_NW_parameters_triggerEndTime": {
-			"type": "string",
-			"defaultValue": "12:35:00.000"
-		},
 		"containerUri": {
 			"type": "string",
 			"metadata": "URI to storage account containing linked ARM templates"
@@ -157,12 +149,6 @@
 					},
 					"LocalSQLServer_properties_typeProperties_userName": {
 						"value": "[parameters('LocalSQLServer_properties_typeProperties_userName')]"
-					},
-					"trigger_cdc_properties_pl_IncrementalCopyPipeline_MS-Learn_CDC_Generic_NW_parameters_triggerStartTime": {
-						"value": "[parameters('trigger_cdc_properties_pl_IncrementalCopyPipeline_MS-Learn_CDC_Generic_NW_parameters_triggerStartTime')]"
-					},
-					"trigger_cdc_properties_pl_IncrementalCopyPipeline_MS-Learn_CDC_Generic_NW_parameters_triggerEndTime": {
-						"value": "[parameters('trigger_cdc_properties_pl_IncrementalCopyPipeline_MS-Learn_CDC_Generic_NW_parameters_triggerEndTime')]"
 					}
 				}
 			},

@@ -46,12 +46,6 @@
 		},
 		"ls_azure_sql_db_properties_typeProperties_userName": {
 			"value": "adm"
-		},
-		"trigger_cdc_properties_pl_IncrementalCopyPipeline_MS-Learn_CDC_Generic_NW_parameters_triggerStartTime": {
-			"value": "12:30:00.000"
-		},
-		"trigger_cdc_properties_pl_IncrementalCopyPipeline_MS-Learn_CDC_Generic_NW_parameters_triggerEndTime": {
-			"value": "12:35:00.000"
 		}
 	}
 }

@@ -1,5 +1,5 @@
 {
-	"name": "ds_source_SourceDataset",
+	"name": "ds_source_dataset",
 	"properties": {
 		"linkedServiceName": {
 			"referenceName": "ls_azure_sql_db",

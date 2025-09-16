@@ -420,7 +420,7 @@
 								"partitionOption": "None"
 							},
 							"dataset": {
-								"referenceName": "ds_source_SourceDataset",
+								"referenceName": "ds_source_dataset",
 								"type": "DatasetReference",
 								"parameters": {}
 							}
@@ -484,14 +484,14 @@
 						},
 						"inputs": [
 							{
-								"referenceName": "ds_source_SourceDataset",
+								"referenceName": "ds_source_dataset",
 								"type": "DatasetReference",
 								"parameters": {}
 							}
 						],
 						"outputs": [
 							{
-								"referenceName": "ds_sink_SinkDataset",
+								"referenceName": "ds_sink_dataset",
 								"type": "DatasetReference",
 								"parameters": {}
 							}
@@ -555,8 +555,8 @@
 			},
 			"dependsOn": [
 				"[concat(variables('factoryId'), '/datasets/ds_source_WatermarkDataset')]",
-				"[concat(variables('factoryId'), '/datasets/ds_source_SourceDataset')]",
-				"[concat(variables('factoryId'), '/datasets/ds_sink_SinkDataset')]",
+				"[concat(variables('factoryId'), '/datasets/ds_source_dataset')]",
+				"[concat(variables('factoryId'), '/datasets/ds_sink_dataset')]",
 				"[concat(variables('factoryId'), '/linkedServices/ls_azure_sql_db')]"
 			]
 		},
@@ -1400,7 +1400,7 @@
 			]
 		},
 		{
-			"name": "[concat(parameters('factoryName'), '/ds_sink_SinkDataset')]",
+			"name": "[concat(parameters('factoryName'), '/ds_sink_dataset')]",
 			"type": "Microsoft.DataFactory/factories/datasets",
 			"apiVersion": "2018-06-01",
 			"properties": {
@@ -1741,7 +1741,7 @@
 			]
 		},
 		{
-			"name": "[concat(parameters('factoryName'), '/ds_source_SourceDataset')]",
+			"name": "[concat(parameters('factoryName'), '/ds_source_dataset')]",
 			"type": "Microsoft.DataFactory/factories/datasets",
 			"apiVersion": "2018-06-01",
 			"properties": {

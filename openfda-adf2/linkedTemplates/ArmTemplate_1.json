@@ -331,7 +331,7 @@
 								"partitionOption": "None"
 							},
 							"dataset": {
-								"referenceName": "ds_source_SourceDataset",
+								"referenceName": "ds_source_dataset",
 								"type": "DatasetReference",
 								"parameters": {}
 							}
@@ -395,14 +395,14 @@
 						},
 						"inputs": [
 							{
-								"referenceName": "ds_source_SourceDataset",
+								"referenceName": "ds_source_dataset",
 								"type": "DatasetReference",
 								"parameters": {}
 							}
 						],
 						"outputs": [
 							{
-								"referenceName": "ds_sink_SinkDataset",
+								"referenceName": "ds_sink_dataset",
 								"type": "DatasetReference",
 								"parameters": {}
 							}
